@@ -1,0 +1,94 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    services:
+      mongodb:
+        image: mongo
+        ports:
+          - 27017:27017
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '16'
+
+    # Frontend
+    - name: Install frontend dependencies
+      working-directory: ./frontend
+      run: npm install
+
+    - name: Build frontend
+      working-directory: ./frontend
+      run: npm run build
+
+    - name: Run frontend tests
+      working-directory: ./frontend
+      run: npm test -- --watchAll=false
+
+    # Backend
+    - name: Install backend dependencies
+      working-directory: ./backend
+      run: npm install
+
+    - name: Run backend tests
+      working-directory: ./backend
+      env:
+        MONGODB_URI: mongodb://localhost:27017/decertify
+      run: npm test
+
+    # Smart Contracts
+    - name: Install contract dependencies
+      working-directory: ./contracts
+      run: npm install
+
+    - name: Compile smart contracts
+      working-directory: ./contracts
+      run: npx hardhat compile
+
+    - name: Run contract tests
+      working-directory: ./contracts
+      env:
+        SEPOLIA_RPC_URL: ${{ secrets.SEPOLIA_RPC_URL }}
+      run: npx hardhat test --network sepolia
+
+    # Deploy Frontend to Heroku
+    - name: Deploy frontend to Heroku
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      env:
+        HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
+      working-directory: ./frontend
+      run: |
+        git remote add heroku-frontend https://git.heroku.com/decertify-frontend.git
+        git subtree push --prefix frontend heroku-frontend main
+
+    # Deploy Backend to Heroku
+    - name: Deploy backend to Heroku
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      env:
+        HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
+      working-directory: ./backend
+      run: |
+        git remote add heroku-backend https://git.heroku.com/decertify-backend.git
+        git subtree push --prefix backend heroku-backend main
+
+    # Deploy Smart Contracts
+    - name: Deploy smart contracts
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      working-directory: ./contracts
+      env:
+        SEPOLIA_RPC_URL: ${{ secrets.SEPOLIA_RPC_URL }}
+        PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
+      run: npx hardhat run scripts/deploy.js --network sepolia
