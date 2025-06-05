@@ -381,8 +381,4 @@ function OrganizationDashboard() {
 }
 
 export default OrganizationDashboard;
-<<<<<<< HEAD
-const x = 10;
-=======
-const x = 20;
->>>>>>> main
+
