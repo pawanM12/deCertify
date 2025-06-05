@@ -1,4 +1,3 @@
-// frontend/src/pages/StudentDashboard.js
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useWeb3 } from '../contexts/Web3Context';
@@ -10,29 +9,27 @@ const API_URL = process.env.REACT_APP_BACKEND_URL + '/api/users';
 
 function StudentDashboard() {
   const { user, logout } = useAuth();
-  const { contract, address, isConnected, connectWallet, signer, loading: web3Loading, error: web3Error } = useWeb3();
+  const { contract, address, isConnected, signer, error: web3Error } = useWeb3(); // Removed unused web3Loading
   const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState('account');
   const [organizations, setOrganizations] = useState([]);
   const [selectedOrganization, setSelectedOrganization] = useState('');
-  const [currentOrgIssuanceFee, setCurrentOrgIssuanceFee] = useState(null); // New state for selected org's issuance fee
-  const [fetchOrgFeeLoading, setFetchOrgFeeLoading] = useState(false); // New state for loading fee
-  const [fetchOrgFeeError, setFetchOrgFeeError] = useState(null); // New state for fee error
+  const [currentOrgIssuanceFee, setCurrentOrgIssuanceFee] = useState(null);
+  const [fetchOrgFeeLoading, setFetchOrgFeeLoading] = useState(false);
+  const [fetchOrgFeeError, setFetchOrgFeeError] = useState(null);
 
-  // New states for credential details
   const [usn, setUsn] = useState('');
   const [yearOfGraduation, setYearOfGraduation] = useState('');
   const [certificateType, setCertificateType] = useState('');
 
-  const [requestStatus, setRequestStatus] = useState(null); // For request submission feedback
-  const [studentRequests, setStudentRequests] = useState([]); // All requests made by student
-  const [receivedCertificates, setReceivedCertificates] = useState([]); // Issued certificates
+  const [requestStatus, setRequestStatus] = useState(null);
+  const [studentRequests, setStudentRequests] = useState([]);
+  const [receivedCertificates, setReceivedCertificates] = useState([]);
 
-  const [loading, setLoading] = useState(false); // General loading for data fetches
-  const [error, setError] = useState(null); // General error for data fetches
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  // Function to fetch all registered organizations from backend
   const fetchOrganizations = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -45,9 +42,8 @@ function StudentDashboard() {
     } finally {
       setLoading(false);
     }
-  }, [user?.token]); // Dependency on user.token
+  }, []);
 
-  // Function to fetch all requests made by the student
   const fetchStudentRequests = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -64,9 +60,8 @@ function StudentDashboard() {
     } finally {
       setLoading(false);
     }
-  }, [user?.token]); // Dependency on user.token
+  }, [user]);
 
-  // Function to fetch issued certificates for the student
   const fetchReceivedCertificates = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -83,7 +78,7 @@ function StudentDashboard() {
     } finally {
       setLoading(false);
     }
-  }, [user?.token]); // Dependency on user.token
+  }, [user]);
 
   useEffect(() => {
     if (user && user.userType !== 'student') {
@@ -96,14 +91,13 @@ function StudentDashboard() {
       fetchStudentRequests();
       fetchReceivedCertificates();
     }
-  }, [user, fetchOrganizations, fetchStudentRequests, fetchReceivedCertificates]); // Added useCallback functions to dependencies
+  }, [user, fetchOrganizations, fetchStudentRequests, fetchReceivedCertificates]);
 
-  // Effect to fetch issuance fee when a new organization is selected
   useEffect(() => {
     const getOrgIssuanceFee = async () => {
       setFetchOrgFeeLoading(true);
       setFetchOrgFeeError(null);
-      setCurrentOrgIssuanceFee(null); // Clear previous fee
+      setCurrentOrgIssuanceFee(null);
 
       if (!selectedOrganization || !isConnected || !contract) {
         setFetchOrgFeeLoading(false);
@@ -113,10 +107,8 @@ function StudentDashboard() {
       try {
         const org = organizations.find(o => o._id === selectedOrganization);
         if (org && org.walletAddress) {
-          // Call the smart contract to get organization details
           const orgDetails = await contract.organizations(org.walletAddress);
           if (orgDetails && orgDetails.isRegistered) {
-            // The issuanceFee is returned as a BigNumber, convert to string and then to CELO
             setCurrentOrgIssuanceFee(ethers.formatEther(orgDetails.issuanceFee));
           } else {
             setFetchOrgFeeError('Selected organization not found on blockchain or not registered.');
@@ -131,16 +123,14 @@ function StudentDashboard() {
     };
 
     getOrgIssuanceFee();
-  }, [selectedOrganization, isConnected, contract, organizations]); // Dependencies for this effect
+  }, [selectedOrganization, isConnected, contract, organizations]);
 
-
-  // Handle requesting a certificate
   const handleRequestCertificate = async (e) => {
     e.preventDefault();
     setRequestStatus(null);
     setError(null);
 
-    if (!isConnected || !address || !signer) { // Ensure signer is available
+    if (!isConnected || !address || !signer) {
       setRequestStatus({ type: 'error', message: 'Please connect your wallet and ensure it is ready.' });
       return;
     }
@@ -156,12 +146,10 @@ function StudentDashboard() {
       setRequestStatus({ type: 'error', message: 'Issuance fee not loaded. Please wait or select another organization.' });
       return;
     }
-    // New validation for credential details
     if (!usn || !yearOfGraduation || !certificateType) {
       setRequestStatus({ type: 'error', message: 'Please fill in all credential details (USN, Year of Graduation, Type of Certificate).' });
       return;
     }
-
 
     setLoading(true);
     try {
@@ -172,9 +160,9 @@ function StudentDashboard() {
         return;
       }
 
-      const issuanceFeeWei = ethers.parseEther(currentOrgIssuanceFee); // Convert CELO to Wei
+      const issuanceFeeWei = ethers.parseEther(currentOrgIssuanceFee);
 
-      if (issuanceFeeWei > 0n) { // Only send transaction if fee is greater than 0
+      if (issuanceFeeWei > 0n) {
         setRequestStatus({ type: 'info', message: `Initiating payment of ${currentOrgIssuanceFee} CELO to ${org.name}... Please confirm in MetaMask.` });
         console.log(`Sending ${currentOrgIssuanceFee} CELO to ${org.walletAddress}`);
 
@@ -183,37 +171,35 @@ function StudentDashboard() {
             to: org.walletAddress,
             value: issuanceFeeWei,
           });
-          await tx.wait(); // Wait for the transaction to be mined
+          await tx.wait();
           setRequestStatus({ type: 'success', message: `Payment of ${currentOrgIssuanceFee} CELO successful! Transaction Hash: ${tx.hash}` });
           console.log('Payment transaction successful:', tx.hash);
         } catch (txError) {
           console.error('Payment transaction failed:', txError);
           setRequestStatus({ type: 'error', message: `Payment failed: ${txError.reason || txError.message}. Request not submitted.` });
           setLoading(false);
-          return; // Stop if payment fails
+          return;
         }
       } else {
         setRequestStatus({ type: 'info', message: 'No issuance fee required. Proceeding with request submission.' });
       }
 
-      // Now, send the request to the backend including new credential details
       const response = await axios.post(`${API_URL}/request-certificate`,
         {
           organizationId: selectedOrganization,
-          issuanceAmount: issuanceFeeWei.toString(), // Send fee in Wei as string
+          issuanceAmount: issuanceFeeWei.toString(),
           usn,
-          yearOfGraduation: parseInt(yearOfGraduation), // Ensure it's sent as a number
+          yearOfGraduation: parseInt(yearOfGraduation),
           certificateType,
         },
         { headers: { Authorization: `Bearer ${user.token}` } }
       );
       setRequestStatus({ type: 'success', message: response.data.message });
-      fetchStudentRequests(); // Refresh requests list
-      // Clear form fields after successful submission
+      fetchStudentRequests();
       setUsn('');
       setYearOfGraduation('');
       setCertificateType('');
-      setSelectedOrganization(''); // Also clear selected organization
+      setSelectedOrganization('');
     } catch (err) {
       console.error('Error requesting certificate:', err);
       setRequestStatus({ type: 'error', message: err.response?.data?.message || err.message || 'Failed to submit request.' });
@@ -251,7 +237,6 @@ function StudentDashboard() {
         padding: '40px 32px',
         minHeight: 600,
       }}>
-        {/* Header */}
         <div style={{
           display: 'flex',
           justifyContent: 'space-between',
@@ -269,7 +254,6 @@ function StudentDashboard() {
           <button onClick={handleLogout} className="button button-outline" style={{ fontWeight: 700, fontSize: '1.08em', padding: '10px 24px' }}>Logout</button>
         </div>
 
-        {/* Tabs */}
         <div className="tabs" style={{ marginBottom: 32 }}>
           <button className={`tab-button${activeTab === 'account' ? ' active' : ''}`} onClick={() => setActiveTab('account')}>Account</button>
           <button className={`tab-button${activeTab === 'request' ? ' active' : ''}`} onClick={() => setActiveTab('request')}>Request Certificate</button>
@@ -277,12 +261,10 @@ function StudentDashboard() {
           <button className={`tab-button${activeTab === 'certificates' ? ' active' : ''}`} onClick={() => setActiveTab('certificates')}>Received Certificates</button>
         </div>
 
-        {/* Alerts */}
         {error && <div className="alert alert-error" style={{ marginBottom: 24 }}>{error}</div>}
         {requestStatus && <div className={`alert alert-${requestStatus.type}`} style={{ marginBottom: 24 }}>{requestStatus.message}</div>}
         {web3Error && <div className="alert alert-error" style={{ marginBottom: 24 }}>{web3Error}</div>}
 
-        {/* Tab Content */}
         <div>
           {activeTab === 'account' && (
             <div className="card" style={{ marginBottom: 32, borderRadius: 24, boxShadow: '0 4px 24px var(--shadow-color)', padding: '32px 24px', background: 'linear-gradient(135deg, #f8f9fb 60%, #ecebff 100%)' }}>
@@ -360,16 +342,15 @@ function StudentDashboard() {
                   </div>
                 )}
 
-                {/* New fields for credential details */}
                 <div className="form-group">
                   <label htmlFor="userName">Account User Name:</label>
                   <input
                     type="text"
                     id="userName"
                     className="input-field"
-                    value={user?.name || ''} // Pre-fill with user's name
-                    readOnly // Make it read-only
-                    disabled={true} // Always disabled as it's read-only
+                    value={user?.name || ''}
+                    readOnly
+                    disabled={true}
                   />
                 </div>
                 <div className="form-group">
@@ -394,8 +375,8 @@ function StudentDashboard() {
                     value={yearOfGraduation}
                     onChange={(e) => setYearOfGraduation(e.target.value)}
                     placeholder="e.g., 2023"
-                    min="1900" // Sensible minimum year
-                    max={new Date().getFullYear() + 10} // Sensible maximum year
+                    min="1900"
+                    max={new Date().getFullYear() + 10}
                     required
                     disabled={loading || !isConnected || !selectedOrganization}
                   />
@@ -419,7 +400,6 @@ function StudentDashboard() {
                     <option value="Other">Other</option>
                   </select>
                 </div>
-
 
                 <button type="submit" className="button button-primary" disabled={loading || !isConnected || !address || !selectedOrganization || !usn || !yearOfGraduation || !certificateType}>
                   {loading ? <div className="spinner"></div> : 'Submit Request'}
@@ -538,4 +518,3 @@ function StudentDashboard() {
 }
 
 export default StudentDashboard;
-
