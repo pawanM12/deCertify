@@ -519,8 +519,4 @@ function StudentDashboard() {
 
 export default StudentDashboard;
 
-<<<<<<< HEAD
-const x = 10;
-=======
-const x = 20;
->>>>>>> main
+
