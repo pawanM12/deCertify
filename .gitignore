@@ -1,0 +1,53 @@
+# Ignore node modules from all packages
+**/node_modules/
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Dependency directories
+jspm_packages/
+
+# dotenv environment files
+.env
+.env.*.local
+
+# OS-specific junk files
+.DS_Store
+Thumbs.db
+
+# Editor/IDE-specific files
+.vscode/
+.idea/
+*.sw?
+
+# Build outputs
+dist/
+build/
+out/
+coverage/
+temp/
+
+# Smart contract artifacts (Hardhat)
+contracts/artifacts/
+contracts/cache/
+
+# React specific
+frontend/.next/
+frontend/.cache/
+frontend/.eslintcache
+
+# Hardhat local chain files
+contracts/deployments/
+contracts/typechain/
+contracts/typechain-types/
+
+# System or Mac-specific files
+ehthumbs.db
+Icon?
+.Spotlight-V100
+.Trashes
+
